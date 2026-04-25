@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF and Word Converter + Merge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="bg-grid"></div>
+    <div class="shape shape-one"></div>
+    <div class="shape shape-two"></div>
+
+    <main class="dashboard" data-status-url="{{ url_for('status') }}">
+        <section class="hero">
+            <p class="eyebrow">Document Workbench</p>
+            <h1>Convert and merge PDF + Word files</h1>
+            <p class="subtitle">
+                Handle up to {{ max_files }} files per request. Conversion downloads are ZIP bundles. Merge downloads are single merged files.
+            </p>
+        </section>
+
+        <section class="tool-controls" aria-label="Tool controls">
+            <div class="filter-row" role="tablist" aria-label="Filter tools">
+                <button type="button" class="filter-chip active" data-filter="all" aria-selected="true">All Tools</button>
+                <button type="button" class="filter-chip" data-filter="convert" aria-selected="false">Conversion</button>
+                <button type="button" class="filter-chip" data-filter="merge" aria-selected="false">Merge</button>
+            </div>
+            <p class="hosting-hint">Hosting ready: use Gunicorn or Docker and set FLASK_SECRET_KEY in production.</p>
+        </section>
+
+        <section class="status-bar" aria-live="polite">
+            <article class="status-item">
+                <p class="status-value" id="statusConvertedFiles">{{ status.converted_files }}</p>
+                <p class="status-label">Files Converted</p>
+            </article>
+            <article class="status-item">
+                <p class="status-value" id="statusConversionJobs">{{ status.conversion_jobs }}</p>
+                <p class="status-label">Conversion Jobs</p>
+            </article>
+            <article class="status-item">
+                <p class="status-value" id="statusMergeJobs">{{ status.merge_jobs }}</p>
+                <p class="status-label">Merge Jobs</p>
+            </article>
+            <article class="status-item">
+                <p class="status-value" id="statusMergedSourceFiles">{{ status.merged_source_files }}</p>
+                <p class="status-label">Files Merged</p>
+            </article>
+        </section>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <ul class="alerts">
+                    {% for message in messages %}
+                        <li>{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        <section class="card-grid">
+            <form action="{{ url_for('convert_pdf_to_word') }}" method="POST" enctype="multipart/form-data" class="job-card" data-group="convert">
+                <p class="card-kicker">Convert</p>
+                <h2>PDF to Word</h2>
+                <label class="upload-prompt" for="pdf_files">
+                    <span>Drop PDF files here or browse</span>
+                    <small>Allowed: .pdf. Limit: {{ max_files }} files, {{ max_size_mb }}MB total.</small>
+                </label>
+                <input
+                    type="file"
+                    id="pdf_files"
+                    name="pdf_files"
+                    accept=".pdf,application/pdf"
+                    multiple
+                    required
+                    data-max-files="{{ max_files }}"
+                    data-min-files="1"
+                >
+                <p class="file-count" id="pdfFileCount">No files selected yet.</p>
+                <button type="submit" id="pdfConvertButton">Convert to Word</button>
+            </form>
+
+            <form action="{{ url_for('convert_word_to_pdf') }}" method="POST" enctype="multipart/form-data" class="job-card" data-group="convert">
+                <p class="card-kicker">Convert</p>
+                <h2>Word to PDF</h2>
+                <label class="upload-prompt" for="word_files">
+                    <span>Drop Word files here or browse</span>
+                    <small>Allowed: .doc, .docx. Limit: {{ max_files }} files, {{ max_size_mb }}MB total.</small>
+                </label>
+                <input
+                    type="file"
+                    id="word_files"
+                    name="word_files"
+                    accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    multiple
+                    required
+                    data-max-files="{{ max_files }}"
+                    data-min-files="1"
+                >
+                <p class="file-count" id="wordFileCount">No files selected yet.</p>
+                <button type="submit" id="wordConvertButton">Convert to PDF</button>
+            </form>
+
+            <form action="{{ url_for('merge_pdf_files') }}" method="POST" enctype="multipart/form-data" class="job-card" data-group="merge">
+                <p class="card-kicker">Merge</p>
+                <h2>Merge PDF files</h2>
+                <label class="upload-prompt" for="merge_pdf_files">
+                    <span>Drop PDF files here or browse</span>
+                    <small>At least 2 files required. Limit: {{ max_files }} files.</small>
+                </label>
+                <input
+                    type="file"
+                    id="merge_pdf_files"
+                    name="merge_pdf_files"
+                    accept=".pdf,application/pdf"
+                    multiple
+                    required
+                    data-max-files="{{ max_files }}"
+                    data-min-files="2"
+                >
+                <p class="file-count" id="pdfMergeCount">No files selected yet.</p>
+                <button type="submit" id="pdfMergeButton">Merge PDFs</button>
+            </form>
+
+            <form action="{{ url_for('merge_word_files') }}" method="POST" enctype="multipart/form-data" class="job-card" data-group="merge">
+                <p class="card-kicker">Merge</p>
+                <h2>Merge Word files</h2>
+                <label class="upload-prompt" for="merge_word_files">
+                    <span>Drop DOCX files here or browse</span>
+                    <small>At least 2 files required. .docx only.</small>
+                </label>
+                <input
+                    type="file"
+                    id="merge_word_files"
+                    name="merge_word_files"
+                    accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    multiple
+                    required
+                    data-max-files="{{ max_files }}"
+                    data-min-files="2"
+                >
+                <p class="file-count" id="wordMergeCount">No files selected yet.</p>
+                <button type="submit" id="wordMergeButton">Merge Word Files</button>
+            </form>
+        </section>
+    </main>
+
+    <div class="toast-stack" id="toastStack" aria-live="polite" aria-atomic="true"></div>
+
+    <script>
+        function decodeHtmlEntities(value) {
+            const parser = new DOMParser();
+            const documentValue = parser.parseFromString(value, "text/html");
+            return documentValue.documentElement.textContent || value;
+        }
+
+        function getDownloadFilename(disposition, fallbackName) {
+            const utfMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+            if (utfMatch && utfMatch[1]) {
+                try {
+                    return decodeURIComponent(utfMatch[1].replace(/"/g, "").trim());
+                } catch (_error) {
+                    return utfMatch[1].replace(/"/g, "").trim();
+                }
+            }
+
+            const plainMatch = disposition.match(/filename="?([^";]+)"?/i);
+            if (plainMatch && plainMatch[1]) {
+                return plainMatch[1].trim();
+            }
+
+            return fallbackName;
+        }
+
+        function triggerFileDownload(blob, filename) {
+            const blobUrl = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = blobUrl;
+            link.download = filename;
+            link.style.display = "none";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            window.setTimeout(() => {
+                URL.revokeObjectURL(blobUrl);
+            }, 2500);
+        }
+
+        function showToast(message, tone = "success") {
+            const toastStack = document.getElementById("toastStack");
+            if (!toastStack) {
+                return;
+            }
+
+            const toast = document.createElement("div");
+            toast.className = `toast toast-${tone}`;
+            toast.textContent = message;
+            toast.setAttribute("role", "status");
+
+            toastStack.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.add("visible");
+            });
+
+            window.setTimeout(() => {
+                toast.classList.remove("visible");
+                window.setTimeout(() => {
+                    toast.remove();
+                }, 260);
+            }, 3600);
+        }
+
+        function wireJobCard(config) {
+            const input = document.getElementById(config.inputId);
+            const helperText = document.getElementById(config.fileCountId);
+            const submitButton = document.getElementById(config.buttonId);
+            const form = input.closest("form");
+            const uploadPrompt = form.querySelector(".upload-prompt");
+            const maxFiles = Number(input.dataset.maxFiles);
+            const minFiles = Number(input.dataset.minFiles || 1);
+
+            function setState(message, isError, disableButton) {
+                helperText.textContent = message;
+                helperText.classList.toggle("error", Boolean(isError));
+                submitButton.disabled = disableButton;
+                if (!disableButton) {
+                    submitButton.textContent = config.idleText;
+                }
+            }
+
+            function updateCount() {
+                const count = input.files.length;
+
+                if (count === 0) {
+                    setState("No files selected yet.", false, true);
+                    return;
+                }
+
+                if (count > maxFiles) {
+                    setState(`You selected ${count} files. Maximum allowed is ${maxFiles}.`, true, true);
+                    return;
+                }
+
+                if (count < minFiles) {
+                    setState(`Select at least ${minFiles} files for this action.`, true, true);
+                    return;
+                }
+
+                setState(`${count} file${count > 1 ? "s" : ""} ready.`, false, false);
+            }
+
+            input.addEventListener("change", updateCount);
+
+            if (uploadPrompt) {
+                ["dragenter", "dragover"].forEach((eventName) => {
+                    uploadPrompt.addEventListener(eventName, (event) => {
+                        event.preventDefault();
+                        uploadPrompt.classList.add("drag-active");
+                    });
+                });
+
+                ["dragleave", "drop"].forEach((eventName) => {
+                    uploadPrompt.addEventListener(eventName, (event) => {
+                        event.preventDefault();
+                        uploadPrompt.classList.remove("drag-active");
+                    });
+                });
+
+                uploadPrompt.addEventListener("drop", (event) => {
+                    const droppedFiles = event.dataTransfer ? event.dataTransfer.files : null;
+                    if (!droppedFiles || droppedFiles.length === 0) {
+                        return;
+                    }
+
+                    if (typeof DataTransfer !== "undefined") {
+                        const transfer = new DataTransfer();
+                        Array.from(droppedFiles).forEach((file) => transfer.items.add(file));
+                        input.files = transfer.files;
+                    }
+
+                    updateCount();
+                });
+            }
+
+            form.addEventListener("submit", async (event) => {
+                event.preventDefault();
+                updateCount();
+                if (submitButton.disabled) {
+                    return;
+                }
+
+                submitButton.disabled = true;
+                submitButton.textContent = config.busyText;
+
+                try {
+                    const response = await fetch(form.action, {
+                        method: form.method || "POST",
+                        body: new FormData(form),
+                        credentials: "same-origin",
+                    });
+
+                    const disposition = response.headers.get("content-disposition") || "";
+                    const contentType = response.headers.get("content-type") || "";
+
+                    if (response.ok && disposition.toLowerCase().includes("attachment")) {
+                        const downloadedBlob = await response.blob();
+                        const downloadName = getDownloadFilename(
+                            disposition,
+                            config.downloadFallback || "download.bin"
+                        );
+
+                        triggerFileDownload(downloadedBlob, downloadName);
+                        form.reset();
+                        updateCount();
+                        showToast(config.successToast || "Operation completed successfully.", "success");
+
+                        refreshStatus();
+                        window.setTimeout(refreshStatus, 900);
+                        return;
+                    }
+
+                    let errorMessage = `Request failed (${response.status}).`;
+
+                    if (contentType.includes("text/html")) {
+                        const htmlBody = await response.text();
+                        const firstAlertMatch = htmlBody.match(/<li>(.*?)<\/li>/i);
+                        if (firstAlertMatch && firstAlertMatch[1]) {
+                            errorMessage = decodeHtmlEntities(firstAlertMatch[1]);
+                        }
+                    } else if (contentType.includes("application/json")) {
+                        const jsonBody = await response.json();
+                        if (jsonBody && typeof jsonBody.message === "string" && jsonBody.message.trim()) {
+                            errorMessage = jsonBody.message;
+                        }
+                    }
+
+                    showToast(errorMessage, "error");
+                } catch (_error) {
+                    showToast("Network issue while processing request. Please try again.", "error");
+                } finally {
+                    submitButton.textContent = config.idleText;
+                    updateCount();
+                }
+            });
+
+            updateCount();
+        }
+
+        async function refreshStatus() {
+            const dashboard = document.querySelector(".dashboard");
+            if (!dashboard) {
+                return;
+            }
+
+            const statusUrl = dashboard.dataset.statusUrl;
+
+            try {
+                const response = await fetch(statusUrl, {
+                    headers: {
+                        Accept: "application/json",
+                    },
+                });
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const status = await response.json();
+
+                document.getElementById("statusConvertedFiles").textContent = status.converted_files ?? 0;
+                document.getElementById("statusConversionJobs").textContent = status.conversion_jobs ?? 0;
+                document.getElementById("statusMergeJobs").textContent = status.merge_jobs ?? 0;
+                document.getElementById("statusMergedSourceFiles").textContent = status.merged_source_files ?? 0;
+            } catch (_error) {
+                // Ignore temporary polling errors.
+            }
+        }
+
+        function wireToolFilters() {
+            const chips = Array.from(document.querySelectorAll(".filter-chip"));
+            const cards = Array.from(document.querySelectorAll(".job-card"));
+
+            chips.forEach((chip) => {
+                chip.addEventListener("click", () => {
+                    const filter = chip.dataset.filter || "all";
+
+                    chips.forEach((otherChip) => {
+                        const active = otherChip === chip;
+                        otherChip.classList.toggle("active", active);
+                        otherChip.setAttribute("aria-selected", String(active));
+                    });
+
+                    cards.forEach((card) => {
+                        const matches = filter === "all" || card.dataset.group === filter;
+                        card.classList.toggle("is-hidden", !matches);
+                    });
+                });
+            });
+        }
+
+        wireJobCard({
+            inputId: "pdf_files",
+            fileCountId: "pdfFileCount",
+            buttonId: "pdfConvertButton",
+            idleText: "Convert to Word",
+            busyText: "Converting...",
+            successToast: "Conversion complete. Word ZIP is ready.",
+            downloadFallback: "converted_word_files.zip",
+        });
+
+        wireJobCard({
+            inputId: "word_files",
+            fileCountId: "wordFileCount",
+            buttonId: "wordConvertButton",
+            idleText: "Convert to PDF",
+            busyText: "Converting...",
+            successToast: "Conversion complete. PDF ZIP is ready.",
+            downloadFallback: "converted_pdf_files.zip",
+        });
+
+        wireJobCard({
+            inputId: "merge_pdf_files",
+            fileCountId: "pdfMergeCount",
+            buttonId: "pdfMergeButton",
+            idleText: "Merge PDFs",
+            busyText: "Merging...",
+            successToast: "PDF merge complete. Download is ready.",
+            downloadFallback: "merged.pdf",
+        });
+
+        wireJobCard({
+            inputId: "merge_word_files",
+            fileCountId: "wordMergeCount",
+            buttonId: "wordMergeButton",
+            idleText: "Merge Word Files",
+            busyText: "Merging...",
+            successToast: "Word merge complete. Download is ready.",
+            downloadFallback: "merged.docx",
+        });
+
+        wireToolFilters();
+        refreshStatus();
+        setInterval(refreshStatus, 3500);
+    </script>
+</body>
+</html>
