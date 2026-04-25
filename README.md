@@ -1,111 +1,68 @@
-# PDF and Word Batch Converter
+# 📄 PDF & Word Converter
 
-This project is a Flask web app that converts and merges documents from a modern UI dashboard.
+> A fast, browser-based document conversion tool built with Flask. Convert, merge, and download documents — all in one place, with no sign-up required.
 
-It supports multiple actions:
+![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-3.0-lightgrey?logo=flask)
+![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-green)
 
-- PDF to Word (.docx)
-- Word (.doc/.docx) to PDF
-- Merge multiple PDFs into a single PDF
-- Merge multiple Word files (.docx) into a single .docx
+---
 
-## Features
+## ✨ What It Does
 
-- Upload and convert up to 30 files at once (supports 15+ as requested).
-- Batch PDF to Word conversion.
-- Batch Word to PDF conversion.
-- PDF merge (2+ files).
-- Word merge for .docx files (2+ files).
-- Downloads converted files as a ZIP archive.
-- Downloads merged output as a single file.
-- Adds a `conversion_report.txt` in the ZIP if any file fails conversion.
-- Live status bar showing cumulative conversion and merge activity.
-- Tool filters (All / Conversion / Merge) and drag-drop uploads.
-- Production-ready setup with health endpoint and deployment files.
+| Feature | Description |
+|---|---|
+| 📄 PDF → Word | Convert PDF files to editable `.docx` |
+| 📝 Word → PDF | Convert `.doc` / `.docx` files to PDF |
+| 🗂️ Merge PDFs | Combine multiple PDFs into one |
+| 📋 Merge Word | Combine multiple `.docx` files into one |
 
-## Tech Stack
+- 🔁 **Batch processing** — upload up to 30 files at once
+- 📦 **ZIP download** — get all converted files in a single archive
+- 🖱️ **Drag & drop** file upload support
+- 📊 **Live status bar** tracking conversions in real time
+- 🐳 **Docker-ready** with LibreOffice for Linux/cloud hosting
 
-- Python
-- Flask
-- pdf2docx
-- docx2pdf
-- pypdf
-- python-docx
-- docxcompose
-- gunicorn
+---
 
-## Run Locally
+## 🛠️ Tech Stack
 
-1. Create and activate a virtual environment:
+`Python` · `Flask` · `pdf2docx` · `docx2pdf` · `pypdf` · `python-docx` · `gunicorn` · `Docker`
 
-   ```powershell
-   python -m venv .venv
-   .\.venv\Scripts\Activate.ps1
-   ```
+---
 
-2. Install dependencies:
-
-   ```powershell
-   python -m pip install -r requirements.txt
-   ```
-
-3. Start the app:
-
-   ```powershell
-   python app.py
-   ```
-
-4. Open in browser:
-
-   ```
-   http://127.0.0.1:5000
-   ```
-
-## Deploy / Host
-
-### Option 1: Procfile Hosts (Render, Railway, Heroku-style)
-
-1. Set environment variables:
-
-   - `FLASK_SECRET_KEY` (required in production)
-   - `PORT` (usually provided by host)
-   - Optional: `MAX_FILES_PER_REQUEST`, `MAX_UPLOAD_SIZE_MB`, `SESSION_COOKIE_SECURE`
-
-2. Use the included `Procfile`:
-
-   ```
-   web: gunicorn wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 2 --timeout 300
-   ```
-
-3. Health check endpoint:
-
-   ```
-   /healthz
-   ```
-
-### Option 2: Docker Hosts
-
-This repository includes a `Dockerfile` that installs LibreOffice for hosted Word-to-PDF fallback.
-
-Build and run:
+## 🚀 Run Locally
 
 ```powershell
-docker build -t doc-converter .
-docker run -e FLASK_SECRET_KEY=replace_this -e PORT=8000 -p 8000:8000 doc-converter
+# 1. Create virtual environment
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Start the app
+python app.py
 ```
 
-Open:
+Open → `http://127.0.0.1:5000`
 
+---
+
+## ☁️ Deploy with Docker
+
+```bash
+docker build -t pdf-converter .
+docker run -e FLASK_SECRET_KEY=your_secret -p 7860:7860 pdf-converter
 ```
-http://127.0.0.1:8000
-```
 
-## Notes
+> Includes LibreOffice as fallback for Word → PDF on Linux hosts (e.g. Hugging Face Spaces).
 
-- Upload limit is 250MB total per request.
-- PDF to Word accepts `.pdf` files.
-- Word to PDF accepts `.doc` and `.docx` files.
-- Word to PDF uses `docx2pdf` first. If unavailable on your host, it falls back to LibreOffice (`soffice`) when installed.
-- Word merge accepts `.docx` files only.
-- On Linux hosts, `pywin32` is skipped automatically through environment markers in `requirements.txt`.
-- Some complex PDFs (scanned/image-only PDFs) may convert with limited formatting depending on source quality.
+---
+
+## 📌 Notes
+
+- Max upload: **250MB** per request
+- Word → PDF uses `docx2pdf` on Windows, falls back to **LibreOffice** on Linux
+- Scanned/image-only PDFs may have limited formatting after conversion
