@@ -1,3 +1,12 @@
+---
+title: PDF To Word Converter
+emoji: 📄
+colorFrom: blue
+colorTo: purple
+sdk: docker
+pinned: false
+---
+
 # 📄 PDF & Word Converter
 
 > A fast, browser-based document conversion tool built with Flask. Convert, merge, and download documents — all in one place, with no sign-up required.
