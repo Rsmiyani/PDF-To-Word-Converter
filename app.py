@@ -19,7 +19,10 @@ from flask import (
     url_for,
 )
 from docx import Document
-from docx2pdf import convert as docx_to_pdf
+try:
+    from docx2pdf import convert as docx_to_pdf
+except Exception:
+    docx_to_pdf = None
 from docxcompose.composer import Composer
 from pdf2docx import Converter
 from pypdf import PdfMerger
@@ -194,13 +197,14 @@ def merge_word_documents(docx_paths: list[Path], merged_output_path: Path) -> No
 def convert_word_to_pdf_document(word_path: Path, pdf_path: Path) -> None:
     conversion_error = None
 
-    try:
-        docx_to_pdf(str(word_path), str(pdf_path))
-        if pdf_path.exists():
-            return
-        conversion_error = RuntimeError("Word conversion did not create a PDF output file.")
-    except Exception as docx_to_pdf_error:  # noqa: BLE001
-        conversion_error = docx_to_pdf_error
+    if docx_to_pdf is not None:
+        try:
+            docx_to_pdf(str(word_path), str(pdf_path))
+            if pdf_path.exists():
+                return
+            conversion_error = RuntimeError("Word conversion did not create a PDF output file.")
+        except Exception as docx_to_pdf_error:  # noqa: BLE001
+            conversion_error = docx_to_pdf_error
 
     soffice_path = shutil.which("soffice")
     if not soffice_path:
